@@ -7106,6 +7106,7 @@ function Library:CreateWindow(WindowInfo)
         local cam = workspace.CurrentCamera
         local depth = 0.5
         local vsize = cam.ViewportSize
+        local inset = game:GetService("GuiService"):GetGuiInset()
         local halfVFov = math.rad(cam.FieldOfView) * 0.5
         local planeHalfH = math.tan(halfVFov) * depth
         local planeHalfW = planeHalfH * (vsize.X / vsize.Y)
@@ -7115,7 +7116,7 @@ function Library:CreateWindow(WindowInfo)
         local sz = frame.AbsoluteSize
         if sz.X == 0 or sz.Y == 0 then return end
         local scx = pos.X + sz.X * 0.5
-        local scy = pos.Y + sz.Y * 0.5
+        local scy = pos.Y + sz.Y * 0.5 - inset.Y
         local ncx = (scx / vsize.X - 0.5) * 2
         local ncy = -(scy / vsize.Y - 0.5) * 2
         gp.CFrame = cam.CFrame * CFrame.new(ncx * planeHalfW, ncy * planeHalfH, -depth)

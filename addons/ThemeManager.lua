@@ -377,7 +377,7 @@ do
         })
 
         groupbox:AddToggle("ThemeManager_Acrylic", { Text = "Acrylic Background", Default = false })
-        groupbox:AddSlider("ThemeManager_Transparency", { Text = "Background Transparency", Min = 0, Max = 1, Decimal = 2, Default = 0.3 })
+        groupbox:AddSlider("ThemeManager_Transparency", { Text = "Background Transparency", Min = 0, Max = 1, Decimal = 1, Default = 0.3 })
 
         self.Library.Toggles.ThemeManager_Acrylic:OnChanged(function(Value)
             local win = self.Library.Window
