@@ -7323,6 +7323,66 @@ function Library:CreateWindow(WindowInfo)
     function Window:SetBlurStrength(val)
         Window.BlurStrength = math.clamp(val, 0, 1)
     end
+    -- custom backdrop image. Pass a local file path (resolved via getcustomasset),
+    -- an "rbxassetid://" / "http" url, or "" / nil to clear it. transparency: 0 = opaque, 1 = invisible.
+    -- Shows behind the chrome, so it reads best with Acrylic on (transparent panels let it through).
+    -- download a web image (pinterest/imgur/direct url) to a local file and return an rbxasset:// for it.
+    -- Roblox can't load raw http urls into an ImageLabel, so the executor must fetch + writefile + getcustomasset.
+    local function resolveWebImage(url)
+        local gca = getcustomasset or getsynasset
+        if not (gca and writefile) then return nil end -- needs an executor
+        -- pinterest/short links serve an HTML page, not the image; pull the real one out of og:image
+        local direct = url:match("%.png") or url:match("%.jpe?g") or url:match("%.webp") or url:match("%.gif")
+        if not direct and (url:match("pinterest%.") or url:match("pin%.it") or url:match("/pin/")) then
+            local okh, html = pcall(game.HttpGet, game, url)
+            if okh and html then
+                url = html:match('property="og:image"%s+content="([^"]+)"')
+                    or html:match('content="([^"]+)"%s+property="og:image"')
+                    or url
+            end
+        end
+        local ext = (url:match("%.(%w+)%?") or url:match("%.(%w+)$") or "png"):lower()
+        if ext ~= "png" and ext ~= "jpg" and ext ~= "jpeg" and ext ~= "webp" and ext ~= "gif" then ext = "png" end
+        local path = "obsidian_imgcache_" .. #url .. "_" .. url:gsub("%W", ""):sub(-28) .. "." .. ext
+        if not (isfile and isfile(path)) then
+            local okd, data = pcall(game.HttpGet, game, url)
+            if not okd or type(data) ~= "string" or #data < 64 then return nil end
+            if not pcall(writefile, path, data) then return nil end
+        end
+        local oka, asset = pcall(gca, path)
+        return oka and asset or nil
+    end
+    function Window:SetBackgroundImage(image, transparency)
+        local gca = getcustomasset or getsynasset
+        if image and image ~= "" then
+            if image:match("^https?://") then
+                image = resolveWebImage(image) or ""
+            elseif gca and not image:match("^rbx") then
+                local ok, asset = pcall(gca, image)
+                if ok and asset then image = asset end
+            end
+        end
+        if not BackgroundImage then
+            BackgroundImage = New("ImageLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromScale(0, 0),
+                Size = UDim2.fromScale(1, 1),
+                ScaleType = Enum.ScaleType.Crop,
+                ZIndex = 0, -- behind the chrome
+                Parent = MainFrame,
+            })
+            table.insert(
+                Library.Corners,
+                New("UICorner", {
+                    CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                    Parent = BackgroundImage,
+                })
+            )
+        end
+        BackgroundImage.Image = image or ""
+        BackgroundImage.ImageTransparency = transparency or 0
+        BackgroundImage.Visible = image ~= nil and image ~= ""
+    end
 
     local function ApplyCompact()
         IsCompact = Window:GetSidebarWidth() == WindowInfo.SidebarCompactWidth

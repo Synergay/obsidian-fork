@@ -393,6 +393,16 @@ do
             if win then win:SetBlurStrength(Value) end
         end)
 
+        groupbox:AddInput("ThemeManager_BackgroundImage", { Text = "Background Image", Placeholder = "asset id, web/pinterest url, or file path", Finished = true })
+        groupbox:AddSlider("ThemeManager_BackgroundImageTransparency", { Text = "Background Image Transparency", Min = 0, Max = 1, Rounding = 2, Default = 0 })
+        local function applyBgImage()
+            local win = self.Library.Window
+            if not (win and win.SetBackgroundImage) then return end
+            win:SetBackgroundImage(self.Library.Options.ThemeManager_BackgroundImage.Value, self.Library.Options.ThemeManager_BackgroundImageTransparency.Value)
+        end
+        self.Library.Options.ThemeManager_BackgroundImage:OnChanged(applyBgImage)
+        self.Library.Options.ThemeManager_BackgroundImageTransparency:OnChanged(applyBgImage)
+
         groupbox:AddToggle("ThemeManager_DetachSidebar", { Text = "Detach Sidebar", Default = false })
         self.Library.Toggles.ThemeManager_DetachSidebar:OnChanged(function(Value)
             local win = self.Library.Window
