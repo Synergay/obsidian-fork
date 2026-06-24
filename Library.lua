@@ -6647,6 +6647,8 @@ function Library:CreateWindow(WindowInfo)
     local BackgroundImage
     local BottomBackground
     local FooterLabel
+    local DetachedFrame
+    local DetachedHeader
 
     local InitialLeftWidth = math.ceil(WindowInfo.Size.X.Offset * 0.3)
     local IsCompact = WindowInfo.SidebarCompacted
@@ -6986,7 +6988,7 @@ function Library:CreateWindow(WindowInfo)
             Parent = Tabs,
         })
 
-        local DetachedFrame = New("Frame", {
+        DetachedFrame = New("Frame", {
             BackgroundColor3 = "BackgroundColor",
             Size = UDim2.fromOffset(InitialLeftWidth, 300),
             Visible = false,
@@ -6998,7 +7000,7 @@ function Library:CreateWindow(WindowInfo)
         }))
         Library:AddOutline(DetachedFrame)
 
-        local DetachedHeader = New("TextButton", {
+        DetachedHeader = New("TextButton", {
             BackgroundColor3 = "MainColor",
             Size = UDim2.new(1, 0, 0, 24),
             Text = "  Tabs",
