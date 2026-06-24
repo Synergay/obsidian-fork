@@ -7197,10 +7197,6 @@ function Library:CreateWindow(WindowInfo)
     Window.Acrylic = false
     Window.BackgroundTransparency = 0.3
     local glassPart, glassPartDetached, glassPartKeybind, blurConnection
-    -- Inner panels (tabs, groupboxes, searchbar) that would otherwise double-darken
-    -- over the tinted MainFrame. In acrylic they go fully transparent so the whole UI
-    -- shows one uniform glass tint; opaque again when acrylic is off.
-    local acrylicPanels = {}
     local function updatetrans()
         local t = Window.Acrylic and Window.BackgroundTransparency or 0
         local passthrough = Window.Acrylic and 1 or 0
@@ -7212,18 +7208,11 @@ function Library:CreateWindow(WindowInfo)
         if Library.KeybindFrame then
             Library.KeybindFrame.BackgroundTransparency = t
         end
-        -- pass-through layers: single uniform tint everywhere
+        -- pass-through layers so the chrome shows one uniform glass tint.
+        -- Groupboxes are intentionally left opaque (solid panels over the glass).
         Tabs.BackgroundTransparency = passthrough
         BottomBackground.BackgroundTransparency = passthrough
         SearchBox.BackgroundTransparency = passthrough
-        for _, f in acrylicPanels do
-            f.BackgroundTransparency = passthrough
-        end
-    end
-    -- groupbox/tabbox panels register here so they follow acrylic too
-    function Window:TrackAcrylicPanel(frame)
-        table.insert(acrylicPanels, frame)
-        frame.BackgroundTransparency = Window.Acrylic and 1 or 0
     end
     local function calcGlassCF(frame, gp)
         local cam = workspace.CurrentCamera
@@ -7811,7 +7800,6 @@ function Library:CreateWindow(WindowInfo)
                     })
                 )
                 Library:AddOutline(GroupboxHolder)
-                Window:TrackAcrylicPanel(GroupboxHolder)
 
                 Line = Library:MakeLine(GroupboxHolder, {
                     Position = UDim2.fromOffset(0, 34),
@@ -7964,7 +7952,6 @@ function Library:CreateWindow(WindowInfo)
                     })
                 )
                 Library:AddOutline(TabboxHolder)
-                Window:TrackAcrylicPanel(TabboxHolder)
 
                 TabboxButtons = New("Frame", {
                     BackgroundTransparency = 1,
