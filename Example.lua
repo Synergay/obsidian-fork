@@ -2,9 +2,10 @@
 -- example script by https://github.com/mstudio45/LinoriaLib/blob/main/Example.lua and modified by deivid
 -- You can suggest changes with a pull request or something
 
-local Library = loadstring(readfile("Library.lua"))()
-local ThemeManager = loadstring(readfile("addons/ThemeManager.lua"))()
-local SaveManager = loadstring(readfile("addons/SaveManager.lua"))()
+local repo = "https://raw.githubusercontent.com/Synergay/obsidian-fork/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local Options = Library.Options
 local Toggles = Library.Toggles
