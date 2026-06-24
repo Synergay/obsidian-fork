@@ -7213,6 +7213,7 @@ function Library:CreateWindow(WindowInfo)
         Tabs.BackgroundTransparency = passthrough
         BottomBackground.BackgroundTransparency = passthrough
         SearchBox.BackgroundTransparency = passthrough
+        Container.BackgroundTransparency = passthrough
     end
     local function calcGlassCF(frame, gp)
         local cam = workspace.CurrentCamera
