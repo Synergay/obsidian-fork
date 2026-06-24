@@ -636,6 +636,7 @@ export type Groupbox = BaseGroupbox & {
     Tab: Tab,
     DependencyBoxes: { [number]: DependencyBox },
     Elements: { [number]: Element },
+    Open: boolean,
 
     Resize: (self: Groupbox) -> (),
 }

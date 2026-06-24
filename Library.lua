@@ -7092,7 +7092,7 @@ function Library:CreateWindow(WindowInfo)
 
     Window.Acrylic = false
     Window.BackgroundTransparency = 0.3
-    local blureff
+    local dof, glassPart, blurConnection
     local function updatetrans()
         local t = Window.Acrylic and Window.BackgroundTransparency or 0
         MainFrame.BackgroundTransparency = t
@@ -7102,17 +7102,65 @@ function Library:CreateWindow(WindowInfo)
     function Window:SetAcrylic(state)
         Window.Acrylic = state
         if state then
-            if not blureff then
-                blureff = Instance.new("BlurEffect")
-                blureff.Size = 24
-                blureff.Parent = game:GetService("Lighting")
+            if not dof then
+                dof = Instance.new("DepthOfFieldEffect")
+                dof.FocusDistance = 0
+                dof.InFocusRadius = 0
+                dof.NearIntensity = 0
+                dof.FarIntensity = 1
+                dof.Parent = game:GetService("Lighting")
+            end
+            if not glassPart then
+                glassPart = Instance.new("Part")
+                glassPart.Material = Enum.Material.Glass
+                glassPart.Color = Color3.fromRGB(15, 15, 15)
+                glassPart.Transparency = 0.98
+                glassPart.CanCollide = false
+                glassPart.CanQuery = false
+                glassPart.CanTouch = false
+                glassPart.CastShadow = false
+                glassPart.Anchored = true
+                glassPart.Parent = workspace.CurrentCamera
+                
                 table.insert(Library.UnloadSignals, function()
-                    if blureff then blureff:Destroy() end
+                    if dof then dof:Destroy() end
+                    if glassPart then glassPart:Destroy() end
+                    if blurConnection then blurConnection:Disconnect() end
                 end)
             end
-            blureff.Enabled = true
+            dof.Enabled = true
+            glassPart.Transparency = 0.98
+
+            if not blurConnection then
+                blurConnection = RunService.RenderStepped:Connect(function()
+                    if not Library.Toggled or not MainFrame.Visible then
+                        glassPart.Transparency = 1
+                        dof.Enabled = false
+                        return
+                    end
+                    dof.Enabled = true
+                    glassPart.Transparency = 0.98
+                    
+                    local cam = workspace.CurrentCamera
+                    local depth = 0.11
+                    local pos = MainFrame.AbsolutePosition
+                    local sz = MainFrame.AbsoluteSize
+                    
+                    local tl = cam:ViewportPointToRay(pos.X, pos.Y, depth).Origin
+                    local br = cam:ViewportPointToRay(pos.X + sz.X, pos.Y + sz.Y, depth).Origin
+                    local center = cam:ViewportPointToRay(pos.X + sz.X/2, pos.Y + sz.Y/2, depth).Origin
+                    
+                    glassPart.CFrame = CFrame.new(center, center + cam.CFrame.LookVector)
+                    glassPart.Size = Vector3.new(math.abs(br.X - tl.X), math.abs(tl.Y - br.Y), 0.001)
+                end)
+            end
         else
-            if blureff then blureff.Enabled = false end
+            if dof then dof.Enabled = false end
+            if glassPart then glassPart.Transparency = 1 end
+            if blurConnection then
+                blurConnection:Disconnect()
+                blurConnection = nil
+            end
         end
         updatetrans()
     end
@@ -7600,9 +7648,11 @@ function Library:CreateWindow(WindowInfo)
 
             local GroupboxHolder
             local GroupboxLabel
-
             local GroupboxContainer
             local GroupboxList
+            local Line
+            local Arrow
+            local ToggleButton
 
             do
                 GroupboxHolder = New("Frame", {
@@ -7619,7 +7669,7 @@ function Library:CreateWindow(WindowInfo)
                 )
                 Library:AddOutline(GroupboxHolder)
 
-                Library:MakeLine(GroupboxHolder, {
+                Line = Library:MakeLine(GroupboxHolder, {
                     Position = UDim2.fromOffset(0, 34),
                     Size = UDim2.new(1, 0, 0, 1),
                 })
@@ -7640,7 +7690,7 @@ function Library:CreateWindow(WindowInfo)
                 GroupboxLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
                     Position = UDim2.fromOffset(BoxIcon and 24 or 0, 0),
-                    Size = UDim2.new(1, 0, 0, 34),
+                    Size = UDim2.new(1, -(BoxIcon and 49 or 25), 0, 34),
                     Text = Info.Name,
                     TextSize = 15,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -7650,6 +7700,24 @@ function Library:CreateWindow(WindowInfo)
                     PaddingLeft = UDim.new(0, 12),
                     PaddingRight = UDim.new(0, 12),
                     Parent = GroupboxLabel,
+                })
+
+                Arrow = New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(1, -25, 0, 0),
+                    Size = UDim2.new(0, 20, 0, 34),
+                    Text = "▼",
+                    TextColor3 = "FontColor",
+                    TextSize = 14,
+                    Font = Enum.Font.SourceSansBold,
+                    Parent = GroupboxHolder,
+                })
+
+                ToggleButton = New("TextButton", {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 34),
+                    Text = "",
+                    Parent = GroupboxHolder,
                 })
 
                 GroupboxContainer = New("Frame", {
@@ -7680,11 +7748,27 @@ function Library:CreateWindow(WindowInfo)
                 Tab = Tab,
                 DependencyBoxes = {},
                 Elements = {},
+                Open = true,
             }
 
             function Groupbox:Resize()
-                GroupboxHolder.Size = UDim2.new(1, 0, 0, (GroupboxList.AbsoluteContentSize.Y / Library.DPIScale) + 49)
+                if Groupbox.Open then
+                    GroupboxHolder.Size = UDim2.new(1, 0, 0, (GroupboxList.AbsoluteContentSize.Y / Library.DPIScale) + 49)
+                    GroupboxContainer.Visible = true
+                    Line.Visible = true
+                    Arrow.Text = "▼"
+                else
+                    GroupboxHolder.Size = UDim2.new(1, 0, 0, 34)
+                    GroupboxContainer.Visible = false
+                    Line.Visible = false
+                    Arrow.Text = "▲"
+                end
             end
+
+            ToggleButton.MouseButton1Click:Connect(function()
+                Groupbox.Open = not Groupbox.Open
+                Groupbox:Resize()
+            end)
 
             setmetatable(Groupbox, BaseGroupbox)
 
