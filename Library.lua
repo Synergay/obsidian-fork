@@ -9,6 +9,7 @@ local UserInputService: UserInputService = cloneref(game:GetService("UserInputSe
 local TextService: TextService = cloneref(game:GetService("TextService"))
 local Teams: Teams = cloneref(game:GetService("Teams"))
 local TweenService: TweenService = cloneref(game:GetService("TweenService"))
+local GuiService: GuiService = cloneref(game:GetService("GuiService"))
 
 local getgenv = getgenv or function()
     return shared
@@ -3603,9 +3604,7 @@ do
                 Active = not Button.Disabled,
                 BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor",
                 Size = UDim2.fromScale(1, 1),
-                Text = Button.Text,
-                TextSize = 14,
-                TextTransparency = 0.4,
+                Text = "",
                 Visible = Button.Visible,
                 Parent = Holder,
             })
@@ -3628,6 +3627,17 @@ do
             Library:RegisterGradient(grad)
             Button.Gradient = grad
 
+            local Label = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 1),
+                Text = Button.Text,
+                TextSize = 14,
+                TextTransparency = 0.4,
+                TextColor3 = Button.Risky and "RedColor" or "FontColor",
+                Parent = Base,
+            })
+            Button.Label = Label
+
             return Base, Stroke
         end
 
@@ -3637,7 +3647,7 @@ do
                     return
                 end
 
-                Button.Tween = TweenService:Create(Button.Base, Library.TweenInfo, {
+                Button.Tween = TweenService:Create(Button.Label, Library.TweenInfo, {
                     TextTransparency = 0,
                 })
                 Button.Tween:Play()
@@ -3647,7 +3657,7 @@ do
                     return
                 end
 
-                Button.Tween = TweenService:Create(Button.Base, Library.TweenInfo, {
+                Button.Tween = TweenService:Create(Button.Label, Library.TweenInfo, {
                     TextTransparency = 0.4,
                 })
                 Button.Tween:Play()
@@ -3661,21 +3671,21 @@ do
                 if Button.DoubleClick then
                     Button.Locked = true
 
-                    Button.Base.Text = "Are you sure?"
-                    Button.Base.TextColor3 = Library.Scheme.AccentColor
-                    Library.Registry[Button.Base].TextColor3 = "AccentColor"
+                    Button.Label.Text = "Are you sure?"
+                    Button.Label.TextColor3 = Library.Scheme.AccentColor
+                    Library.Registry[Button.Label].TextColor3 = "AccentColor"
 
                     local Clicked = WaitForEvent(Button.Base.MouseButton1Click, 0.5)
 
-                    Button.Base.Text = Button.Text
-                    Button.Base.TextColor3 = Button.Risky and Library.Scheme.RedColor or Library.Scheme.FontColor
-                    Library.Registry[Button.Base].TextColor3 = Button.Risky and "RedColor" or "FontColor"
+                    Button.Label.Text = Button.Text
+                    Button.Label.TextColor3 = Button.Risky and Library.Scheme.RedColor or Library.Scheme.FontColor
+                    Library.Registry[Button.Label].TextColor3 = Button.Risky and "RedColor" or "FontColor"
 
                     if Clicked then
                         Library:SafeCallback(Button.Func)
                     end
 
-                    RunService.RenderStepped:Wait() --// Mouse Button fires without waiting (i hate roblox)
+                    RunService.RenderStepped:Wait()
                     Button.Locked = false
                     return
                 end
@@ -3723,7 +3733,7 @@ do
                 end
                 SubButton.Base.BackgroundColor3 = SubButton.Disabled and Library.Scheme.BackgroundColor
                     or Color3.new(1, 1, 1)
-                SubButton.Base.TextTransparency = SubButton.Disabled and 0.8 or 0.4
+                SubButton.Label.TextTransparency = SubButton.Disabled and 0.8 or 0.4
                 SubButton.Stroke.Transparency = SubButton.Disabled and 0.5 or 0
 
                 Library.Registry[SubButton.Base].BackgroundColor3 = SubButton.Disabled and "BackgroundColor"
@@ -3750,7 +3760,7 @@ do
 
             function SubButton:SetText(Text: string)
                 SubButton.Text = Text
-                SubButton.Base.Text = Text
+                SubButton.Label.Text = Text
             end
 
             if typeof(SubButton.Tooltip) == "string" or typeof(SubButton.DisabledTooltip) == "string" then
@@ -3760,8 +3770,8 @@ do
             end
 
             if SubButton.Risky then
-                SubButton.Base.TextColor3 = Library.Scheme.RedColor
-                Library.Registry[SubButton.Base].TextColor3 = "RedColor"
+                SubButton.Label.TextColor3 = Library.Scheme.RedColor
+                Library.Registry[SubButton.Label].TextColor3 = "RedColor"
             end
 
             SubButton:UpdateColors()
@@ -3787,7 +3797,7 @@ do
             end
             Button.Base.BackgroundColor3 = Button.Disabled and Library.Scheme.BackgroundColor
                 or Color3.new(1, 1, 1)
-            Button.Base.TextTransparency = Button.Disabled and 0.8 or 0.4
+            Button.Label.TextTransparency = Button.Disabled and 0.8 or 0.4
             Button.Stroke.Transparency = Button.Disabled and 0.5 or 0
 
             Library.Registry[Button.Base].BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor"
@@ -3813,7 +3823,7 @@ do
 
         function Button:SetText(Text: string)
             Button.Text = Text
-            Button.Base.Text = Text
+            Button.Label.Text = Text
         end
 
         if typeof(Button.Tooltip) == "string" or typeof(Button.DisabledTooltip) == "string" then
@@ -3822,8 +3832,8 @@ do
         end
 
         if Button.Risky then
-            Button.Base.TextColor3 = Library.Scheme.RedColor
-            Library.Registry[Button.Base].TextColor3 = "RedColor"
+            Button.Label.TextColor3 = Library.Scheme.RedColor
+            Library.Registry[Button.Label].TextColor3 = "RedColor"
         end
 
         Button:UpdateColors()
@@ -7106,7 +7116,6 @@ function Library:CreateWindow(WindowInfo)
         local cam = workspace.CurrentCamera
         local depth = 0.5
         local vsize = cam.ViewportSize
-        local inset = game:GetService("GuiService"):GetGuiInset()
         local halfVFov = math.rad(cam.FieldOfView) * 0.5
         local planeHalfH = math.tan(halfVFov) * depth
         local planeHalfW = planeHalfH * (vsize.X / vsize.Y)
@@ -7115,8 +7124,10 @@ function Library:CreateWindow(WindowInfo)
         local pos = frame.AbsolutePosition
         local sz = frame.AbsoluteSize
         if sz.X == 0 or sz.Y == 0 then return end
-        local scx = pos.X + sz.X * 0.5
-        local scy = pos.Y + sz.Y * 0.5 - inset.Y
+        -- AbsolutePosition excludes the topbar inset, ViewportSize includes it; add it back so the glass lines up with the UI
+        local inset = GuiService:GetGuiInset()
+        local scx = pos.X + sz.X * 0.5 + inset.X
+        local scy = pos.Y + sz.Y * 0.5 + inset.Y
         local ncx = (scx / vsize.X - 0.5) * 2
         local ncy = -(scy / vsize.Y - 0.5) * 2
         gp.CFrame = cam.CFrame * CFrame.new(ncx * planeHalfW, ncy * planeHalfH, -depth)
