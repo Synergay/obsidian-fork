@@ -379,7 +379,7 @@ do
         groupbox:AddToggle("ThemeManager_Acrylic", { Text = "Acrylic Background", Default = false })
         groupbox:AddSlider("ThemeManager_Transparency", { Text = "Background Transparency", Min = 0, Max = 1, Decimal = 2, Default = 0.3 })
 
-        self.Library.Options.ThemeManager_Acrylic:OnChanged(function(Value)
+        self.Library.Toggles.ThemeManager_Acrylic:OnChanged(function(Value)
             local win = self.Library.Window
             if win then win:SetAcrylic(Value) end
         end)
@@ -389,7 +389,7 @@ do
         end)
 
         groupbox:AddToggle("ThemeManager_DetachSidebar", { Text = "Detach Sidebar", Default = false })
-        self.Library.Options.ThemeManager_DetachSidebar:OnChanged(function(Value)
+        self.Library.Toggles.ThemeManager_DetachSidebar:OnChanged(function(Value)
             local win = self.Library.Window
             if win then win:SetSidebarDetached(Value) end
         end)
