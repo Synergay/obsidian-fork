@@ -3601,7 +3601,7 @@ do
         local function CreateButton(Button)
             local Base = New("TextButton", {
                 Active = not Button.Disabled,
-                BackgroundTransparency = 1,
+                BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor",
                 Size = UDim2.fromScale(1, 1),
                 Text = Button.Text,
                 TextSize = 14,
@@ -3624,24 +3624,9 @@ do
                 })
             )
 
-            local GradBg = New("Frame", {
-                BackgroundColor3 = "WhiteColor",
-                Size = UDim2.fromScale(1, 1),
-                ZIndex = Base.ZIndex - 1,
-                Parent = Base,
-            })
-            table.insert(
-                Library.Corners,
-                New("UICorner", {
-                    CornerRadius = UDim.new(0, Library.CornerRadius / 2),
-                    Parent = GradBg,
-                })
-            )
-
-            local grad = New("UIGradient", { Parent = GradBg })
+            local grad = New("UIGradient", { Parent = Base })
             Library:RegisterGradient(grad)
             Button.Gradient = grad
-            Button.GradBg = GradBg
 
             return Base, Stroke
         end
@@ -3736,13 +3721,13 @@ do
                 if SubButton.Gradient then
                     SubButton.Gradient.Enabled = not SubButton.Disabled
                 end
-                if SubButton.GradBg then
-                    SubButton.GradBg.BackgroundColor3 = SubButton.Disabled and Library.Scheme.BackgroundColor or Color3.new(1, 1, 1)
-                    SubButton.GradBg.BackgroundTransparency = SubButton.Disabled and 0 or 0
-                    Library.Registry[SubButton.GradBg].BackgroundColor3 = SubButton.Disabled and "BackgroundColor" or "WhiteColor"
-                end
+                SubButton.Base.BackgroundColor3 = SubButton.Disabled and Library.Scheme.BackgroundColor
+                    or Color3.new(1, 1, 1)
                 SubButton.Base.TextTransparency = SubButton.Disabled and 0.8 or 0.4
                 SubButton.Stroke.Transparency = SubButton.Disabled and 0.5 or 0
+
+                Library.Registry[SubButton.Base].BackgroundColor3 = SubButton.Disabled and "BackgroundColor"
+                    or "WhiteColor"
             end
 
             function SubButton:SetDisabled(Disabled: boolean)
@@ -3800,13 +3785,12 @@ do
             if Button.Gradient then
                 Button.Gradient.Enabled = not Button.Disabled
             end
-            if Button.GradBg then
-                Button.GradBg.BackgroundColor3 = Button.Disabled and Library.Scheme.BackgroundColor or Color3.new(1, 1, 1)
-                Button.GradBg.BackgroundTransparency = Button.Disabled and 0 or 0
-                Library.Registry[Button.GradBg].BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor"
-            end
+            Button.Base.BackgroundColor3 = Button.Disabled and Library.Scheme.BackgroundColor
+                or Color3.new(1, 1, 1)
             Button.Base.TextTransparency = Button.Disabled and 0.8 or 0.4
             Button.Stroke.Transparency = Button.Disabled and 0.5 or 0
+
+            Library.Registry[Button.Base].BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor"
         end
 
         function Button:SetDisabled(Disabled: boolean)
@@ -7108,58 +7092,79 @@ function Library:CreateWindow(WindowInfo)
 
     Window.Acrylic = false
     Window.BackgroundTransparency = 0.3
-    local glassPart, blurConnection
+    local glassPart, glassPartDetached, blurConnection
     local function updatetrans()
         local t = Window.Acrylic and Window.BackgroundTransparency or 0
         MainFrame.BackgroundTransparency = t
         Tabs.BackgroundTransparency = t
         BottomBackground.BackgroundTransparency = t
+        if DetachedFrame then
+            DetachedFrame.BackgroundTransparency = t
+        end
+    end
+    local function calcGlassCF(frame, gp)
+        local cam = workspace.CurrentCamera
+        local depth = 0.5
+        local vsize = cam.ViewportSize
+        local halfVFov = math.rad(cam.FieldOfView) * 0.5
+        local planeHalfH = math.tan(halfVFov) * depth
+        local planeHalfW = planeHalfH * (vsize.X / vsize.Y)
+        local pxH = (planeHalfH * 2) / vsize.Y
+        local pxW = (planeHalfW * 2) / vsize.X
+        local pos = frame.AbsolutePosition
+        local sz = frame.AbsoluteSize
+        if sz.X == 0 or sz.Y == 0 then return end
+        local scx = pos.X + sz.X * 0.5
+        local scy = pos.Y + sz.Y * 0.5
+        local ncx = (scx / vsize.X - 0.5) * 2
+        local ncy = -(scy / vsize.Y - 0.5) * 2
+        gp.CFrame = cam.CFrame * CFrame.new(ncx * planeHalfW, ncy * planeHalfH, -depth)
+        gp.Size = Vector3.new(sz.X * pxW, sz.Y * pxH, 0.001)
+    end
+    local function mkGlass()
+        local p = Instance.new("Part")
+        p.Material = Enum.Material.Glass
+        p.Color = Color3.fromRGB(15, 15, 15)
+        p.Transparency = 1
+        p.CanCollide = false
+        p.CanQuery = false
+        p.CanTouch = false
+        p.CastShadow = false
+        p.Anchored = true
+        p.Parent = workspace.CurrentCamera
+        return p
     end
     function Window:SetAcrylic(state)
         Window.Acrylic = state
         if state then
-            if not glassPart then
-                glassPart = Instance.new("Part")
-                glassPart.Material = Enum.Material.Glass
-                glassPart.Color = Color3.fromRGB(15, 15, 15)
-                glassPart.Transparency = 0.92
-                glassPart.CanCollide = false
-                glassPart.CanQuery = false
-                glassPart.CanTouch = false
-                glassPart.CastShadow = false
-                glassPart.Anchored = true
-                glassPart.Parent = workspace.CurrentCamera
-
-                table.insert(Library.UnloadSignals, function()
-                    if glassPart then glassPart:Destroy() end
-                    if blurConnection then blurConnection:Disconnect() end
-                end)
-            end
-            glassPart.Transparency = 0.92
-
+            if not glassPart then glassPart = mkGlass() end
+            if not glassPartDetached then glassPartDetached = mkGlass() end
+            table.insert(Library.UnloadSignals, function()
+                if glassPart then glassPart:Destroy() end
+                if glassPartDetached then glassPartDetached:Destroy() end
+                if blurConnection then blurConnection:Disconnect() end
+            end)
             if not blurConnection then
                 blurConnection = RunService.RenderStepped:Connect(function()
-                    if not Library.Toggled or not MainFrame.Visible then
+                    local show = Library.Toggled and MainFrame.Visible
+                    if not show then
                         glassPart.Transparency = 1
+                        glassPartDetached.Transparency = 1
                         return
                     end
                     glassPart.Transparency = 0.92
-
-                    local cam = workspace.CurrentCamera
-                    local depth = 0.11
-                    local pos = MainFrame.AbsolutePosition
-                    local sz = MainFrame.AbsoluteSize
-
-                    local tl = cam:ViewportPointToRay(pos.X, pos.Y, depth).Origin
-                    local br = cam:ViewportPointToRay(pos.X + sz.X, pos.Y + sz.Y, depth).Origin
-                    local center = cam:ViewportPointToRay(pos.X + sz.X/2, pos.Y + sz.Y/2, depth).Origin
-
-                    glassPart.CFrame = CFrame.new(center, center + cam.CFrame.LookVector)
-                    glassPart.Size = Vector3.new(math.abs(br.X - tl.X), math.abs(tl.Y - br.Y), 0.001)
+                    calcGlassCF(MainFrame, glassPart)
+                    if DetachedFrame and DetachedFrame.Visible then
+                        glassPartDetached.Transparency = 0.92
+                        calcGlassCF(DetachedFrame, glassPartDetached)
+                    else
+                        glassPartDetached.Transparency = 1
+                    end
                 end)
             end
         else
             if glassPart then glassPart.Transparency = 1 end
+            if glassPartDetached then glassPartDetached.Transparency = 1 end
             if blurConnection then
                 blurConnection:Disconnect()
                 blurConnection = nil
