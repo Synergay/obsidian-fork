@@ -7164,7 +7164,7 @@ function Library:CreateWindow(WindowInfo)
             Tabs.Position = UDim2.fromOffset(0, 28)
             Tabs.Size = UDim2.new(1, 0, 1, -28)
             DividerLine.Visible = false
-            Container.Position = UDim2.fromOffset(0, 49)
+            Container.Position = UDim2.new(1, 0, 0, 49)
             Container.Size = UDim2.new(1, 0, 1, -70)
             DetachedFrame.Position = MainFrame.Position - UDim2.fromOffset(InitialLeftWidth + 8, 0)
             DetachedFrame.Size = UDim2.fromOffset(InitialLeftWidth, MainFrame.Size.Y.Offset - 70)
@@ -7174,7 +7174,7 @@ function Library:CreateWindow(WindowInfo)
             Tabs.Position = UDim2.fromOffset(0, 49)
             Tabs.Size = UDim2.new(0, LastExpandedWidth, 1, -70)
             DividerLine.Visible = true
-            Container.Position = UDim2.fromOffset(LastExpandedWidth + 1, 49)
+            Container.Position = UDim2.new(1, 0, 0, 49)
             Container.Size = UDim2.new(1, -LastExpandedWidth - 1, 1, -70)
             DetachedFrame.Visible = false
         end
