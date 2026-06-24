@@ -3534,6 +3534,86 @@ do
         return Label
     end
 
+    -- UI Gradient: a label followed by N colour-picker boxes in a row.
+    -- Stops is fixed at creation. Aggregates the boxes into a ColorSequence.
+    function Funcs:AddGradient(Idx, Info)
+        if typeof(Idx) == "table" then
+            Info, Idx = Idx, nil
+        end
+        Info = Info or {}
+
+        local Stops = math.max(2, math.floor(Info.Stops or 2))
+        local Text = Info.Text or "UI Gradient"
+        local Defaults = Info.Default -- optional { Color3, Color3, ... }
+        local BaseIdx = Idx or ("Gradient" .. tostring(#Labels + 1))
+
+        local Gradient = {
+            Pickers = {},
+            Changed = Info.Changed,
+            Callback = Info.Callback,
+            Type = "Gradient",
+        }
+
+        local Label = self:AddLabel(Text)
+
+        for i = 1, Stops do
+            local default = (Defaults and Defaults[i]) or Color3.fromHSV((i - 1) / Stops, 1, 1)
+            Label:AddColorPicker(BaseIdx .. "_Stop" .. i, {
+                Default = default,
+                Title = ("%s — Stop %d"):format(Text, i),
+                Changed = function()
+                    Gradient:Update()
+                end,
+            })
+            Gradient.Pickers[i] = Options[BaseIdx .. "_Stop" .. i]
+        end
+
+        function Gradient:GetColors()
+            local out = {}
+            for i, Picker in ipairs(Gradient.Pickers) do
+                out[i] = Picker.Value
+            end
+            return out
+        end
+
+        function Gradient:GetColorSequence()
+            local keypoints = {}
+            for i, Picker in ipairs(Gradient.Pickers) do
+                local t = Stops == 1 and 0 or (i - 1) / (Stops - 1)
+                keypoints[i] = ColorSequenceKeypoint.new(t, Picker.Value)
+            end
+            return ColorSequence.new(keypoints)
+        end
+
+        -- Push the current sequence onto a UIGradient (and keep it in sync)
+        function Gradient:Apply(uiGradient)
+            Gradient.Target = uiGradient
+            uiGradient.Color = Gradient:GetColorSequence()
+            return Gradient
+        end
+
+        function Gradient:OnChanged(Func)
+            Gradient.Changed = Func
+        end
+
+        function Gradient:Update()
+            local seq = Gradient:GetColorSequence()
+            if Gradient.Target then
+                Gradient.Target.Color = seq
+            end
+            Library:SafeCallback(Gradient.Callback, seq, Gradient:GetColors())
+            Library:SafeCallback(Gradient.Changed, seq, Gradient:GetColors())
+        end
+
+        Gradient.Label = Label
+        table.insert(self.Elements, Gradient)
+        if Idx then
+            Options[Idx] = Gradient
+        end
+
+        return Gradient
+    end
+
     function Funcs:AddButton(...)
         local function GetInfo(...)
             local Info = {}
@@ -3641,7 +3721,14 @@ do
                 TextSize = 14,
                 TextTransparency = 0.4,
                 TextColor3 = Button.Risky and "RedColor" or "FontColor",
+                ZIndex = 2,
                 Parent = Base,
+            })
+            New("UIStroke", {
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+                Color = "DarkColor",
+                LineJoinMode = Enum.LineJoinMode.Miter,
+                Parent = Label,
             })
             Button.Label = Label
 
@@ -7109,15 +7196,34 @@ function Library:CreateWindow(WindowInfo)
 
     Window.Acrylic = false
     Window.BackgroundTransparency = 0.3
-    local glassPart, glassPartDetached, blurConnection
+    local glassPart, glassPartDetached, glassPartKeybind, blurConnection
+    -- Inner panels (tabs, groupboxes, searchbar) that would otherwise double-darken
+    -- over the tinted MainFrame. In acrylic they go fully transparent so the whole UI
+    -- shows one uniform glass tint; opaque again when acrylic is off.
+    local acrylicPanels = {}
     local function updatetrans()
         local t = Window.Acrylic and Window.BackgroundTransparency or 0
+        local passthrough = Window.Acrylic and 1 or 0
+        -- tint layers (one per window) provide the glass colour
         MainFrame.BackgroundTransparency = t
-        Tabs.BackgroundTransparency = t
-        BottomBackground.BackgroundTransparency = t
         if DetachedFrame then
             DetachedFrame.BackgroundTransparency = t
         end
+        if Library.KeybindFrame then
+            Library.KeybindFrame.BackgroundTransparency = t
+        end
+        -- pass-through layers: single uniform tint everywhere
+        Tabs.BackgroundTransparency = passthrough
+        BottomBackground.BackgroundTransparency = passthrough
+        SearchBox.BackgroundTransparency = passthrough
+        for _, f in acrylicPanels do
+            f.BackgroundTransparency = passthrough
+        end
+    end
+    -- groupbox/tabbox panels register here so they follow acrylic too
+    function Window:TrackAcrylicPanel(frame)
+        table.insert(acrylicPanels, frame)
+        frame.BackgroundTransparency = Window.Acrylic and 1 or 0
     end
     local function calcGlassCF(frame, gp)
         local cam = workspace.CurrentCamera
@@ -7158,26 +7264,36 @@ function Library:CreateWindow(WindowInfo)
         if state then
             if not glassPart then glassPart = mkGlass() end
             if not glassPartDetached then glassPartDetached = mkGlass() end
+            if not glassPartKeybind then glassPartKeybind = mkGlass() end
             table.insert(Library.UnloadSignals, function()
                 if glassPart then glassPart:Destroy() end
                 if glassPartDetached then glassPartDetached:Destroy() end
+                if glassPartKeybind then glassPartKeybind:Destroy() end
                 if blurConnection then blurConnection:Disconnect() end
             end)
             if not blurConnection then
                 blurConnection = RunService.RenderStepped:Connect(function()
                     local show = Library.Toggled and MainFrame.Visible
-                    if not show then
+                    if show then
+                        glassPart.Transparency = 0.92
+                        calcGlassCF(MainFrame, glassPart)
+                        if DetachedFrame and DetachedFrame.Visible then
+                            glassPartDetached.Transparency = 0.92
+                            calcGlassCF(DetachedFrame, glassPartDetached)
+                        else
+                            glassPartDetached.Transparency = 1
+                        end
+                    else
                         glassPart.Transparency = 1
                         glassPartDetached.Transparency = 1
-                        return
                     end
-                    glassPart.Transparency = 0.92
-                    calcGlassCF(MainFrame, glassPart)
-                    if DetachedFrame and DetachedFrame.Visible then
-                        glassPartDetached.Transparency = 0.92
-                        calcGlassCF(DetachedFrame, glassPartDetached)
+                    -- keybind list shows independently of the main window
+                    local kf = Library.KeybindFrame
+                    if kf and kf.Visible then
+                        glassPartKeybind.Transparency = 0.92
+                        calcGlassCF(kf, glassPartKeybind)
                     else
-                        glassPartDetached.Transparency = 1
+                        glassPartKeybind.Transparency = 1
                     end
                 end)
             end
@@ -7695,6 +7811,7 @@ function Library:CreateWindow(WindowInfo)
                     })
                 )
                 Library:AddOutline(GroupboxHolder)
+                Window:TrackAcrylicPanel(GroupboxHolder)
 
                 Line = Library:MakeLine(GroupboxHolder, {
                     Position = UDim2.fromOffset(0, 34),
@@ -7847,6 +7964,7 @@ function Library:CreateWindow(WindowInfo)
                     })
                 )
                 Library:AddOutline(TabboxHolder)
+                Window:TrackAcrylicPanel(TabboxHolder)
 
                 TabboxButtons = New("Frame", {
                     BackgroundTransparency = 1,
