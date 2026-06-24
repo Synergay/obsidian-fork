@@ -167,10 +167,15 @@ end
 local function parsetxt(t)
     local colors = {
         white = "rgb(255, 255, 255)",
+        black = "rgb(0, 0, 0)",
+        gray = "rgb(150, 150, 150)",
+        grey = "rgb(150, 150, 150)",
         blue = "rgb(0, 120, 255)",
         red = "rgb(255, 50, 50)",
         green = "rgb(50, 255, 50)",
         yellow = "rgb(255, 255, 50)",
+        orange = "rgb(255, 140, 0)",
+        pink = "rgb(255, 100, 200)",
         purple = "rgb(180, 50, 255)",
         accent = "rgb(125, 85, 255)",
     }
@@ -179,7 +184,9 @@ local function parsetxt(t)
         if m then
             return `</font><font color="{m}">`
         end
-        return `</font><font color="{c}">`
+        -- unknown tag: leave it untouched. Emitting color="{c}" would be invalid
+        -- rich-text and make Roblox render the whole string literally.
+        return nil
     end)
     if s ~= t then
         s = `<font color="rgb(255,255,255)">` .. s .. `</font>`
