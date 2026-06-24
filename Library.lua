@@ -7196,6 +7196,7 @@ function Library:CreateWindow(WindowInfo)
 
     Window.Acrylic = false
     Window.BackgroundTransparency = 0.3
+    Window.BlurStrength = 0.08 -- 0 = clear glass, 1 = fully frosted; glass.Transparency = 1 - this
     local glassPart, glassPartDetached, glassPartKeybind, blurConnection
     local function updatetrans()
         local t = Window.Acrylic and Window.BackgroundTransparency or 0
@@ -7215,18 +7216,28 @@ function Library:CreateWindow(WindowInfo)
         SearchBox.BackgroundTransparency = passthrough
         Container.BackgroundTransparency = passthrough
     end
+    -- skip the CFrame math when neither the camera nor the frame moved (static UI = no per-frame work)
+    local glassCache = setmetatable({}, { __mode = "k" })
     local function calcGlassCF(frame, gp)
         local cam = workspace.CurrentCamera
         local depth = 0.5
         local vsize = cam.ViewportSize
-        local halfVFov = math.rad(cam.FieldOfView) * 0.5
+        local camcf = cam.CFrame
+        local fov = cam.FieldOfView
+        local pos = frame.AbsolutePosition
+        local sz = frame.AbsoluteSize
+        if sz.X == 0 or sz.Y == 0 then return end
+        local c = glassCache[gp]
+        if c and c.camcf == camcf and c.fov == fov and c.vp == vsize and c.pos == pos and c.size == sz then
+            return
+        end
+        glassCache[gp] = { camcf = camcf, fov = fov, vp = vsize, pos = pos, size = sz }
+
+        local halfVFov = math.rad(fov) * 0.5
         local planeHalfH = math.tan(halfVFov) * depth
         local planeHalfW = planeHalfH * (vsize.X / vsize.Y)
         local pxH = (planeHalfH * 2) / vsize.Y
         local pxW = (planeHalfW * 2) / vsize.X
-        local pos = frame.AbsolutePosition
-        local sz = frame.AbsoluteSize
-        if sz.X == 0 or sz.Y == 0 then return end
         -- AbsolutePosition excludes the topbar inset, ViewportSize includes it; add it back so the glass lines up with the UI
         local inset = GuiService:GetGuiInset()
         local scx = pos.X + sz.X * 0.5 + inset.X
@@ -7263,12 +7274,13 @@ function Library:CreateWindow(WindowInfo)
             end)
             if not blurConnection then
                 blurConnection = RunService.RenderStepped:Connect(function()
+                    local frost = 1 - Window.BlurStrength
                     local show = Library.Toggled and MainFrame.Visible
                     if show then
-                        glassPart.Transparency = 0.92
+                        glassPart.Transparency = frost
                         calcGlassCF(MainFrame, glassPart)
                         if DetachedFrame and DetachedFrame.Visible then
-                            glassPartDetached.Transparency = 0.92
+                            glassPartDetached.Transparency = frost
                             calcGlassCF(DetachedFrame, glassPartDetached)
                         else
                             glassPartDetached.Transparency = 1
@@ -7280,7 +7292,7 @@ function Library:CreateWindow(WindowInfo)
                     -- keybind list shows independently of the main window
                     local kf = Library.KeybindFrame
                     if kf and kf.Visible then
-                        glassPartKeybind.Transparency = 0.92
+                        glassPartKeybind.Transparency = frost
                         calcGlassCF(kf, glassPartKeybind)
                     else
                         glassPartKeybind.Transparency = 1
@@ -7300,6 +7312,9 @@ function Library:CreateWindow(WindowInfo)
     function Window:SetBackgroundTransparency(val)
         Window.BackgroundTransparency = val
         updatetrans()
+    end
+    function Window:SetBlurStrength(val)
+        Window.BlurStrength = math.clamp(val, 0, 1)
     end
 
     local function ApplyCompact()
