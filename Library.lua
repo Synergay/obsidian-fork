@@ -7092,7 +7092,7 @@ function Library:CreateWindow(WindowInfo)
 
     Window.Acrylic = false
     Window.BackgroundTransparency = 0.3
-    local dof, glassPart, blurConnection
+    local glassPart, blurConnection
     local function updatetrans()
         local t = Window.Acrylic and Window.BackgroundTransparency or 0
         MainFrame.BackgroundTransparency = t
@@ -7102,60 +7102,47 @@ function Library:CreateWindow(WindowInfo)
     function Window:SetAcrylic(state)
         Window.Acrylic = state
         if state then
-            if not dof then
-                dof = Instance.new("DepthOfFieldEffect")
-                dof.FocusDistance = 0
-                dof.InFocusRadius = 0
-                dof.NearIntensity = 0
-                dof.FarIntensity = 1
-                dof.Parent = game:GetService("Lighting")
-            end
             if not glassPart then
                 glassPart = Instance.new("Part")
                 glassPart.Material = Enum.Material.Glass
                 glassPart.Color = Color3.fromRGB(15, 15, 15)
-                glassPart.Transparency = 0.98
+                glassPart.Transparency = 0.92
                 glassPart.CanCollide = false
                 glassPart.CanQuery = false
                 glassPart.CanTouch = false
                 glassPart.CastShadow = false
                 glassPart.Anchored = true
                 glassPart.Parent = workspace.CurrentCamera
-                
+
                 table.insert(Library.UnloadSignals, function()
-                    if dof then dof:Destroy() end
                     if glassPart then glassPart:Destroy() end
                     if blurConnection then blurConnection:Disconnect() end
                 end)
             end
-            dof.Enabled = true
-            glassPart.Transparency = 0.98
+            glassPart.Transparency = 0.92
 
             if not blurConnection then
                 blurConnection = RunService.RenderStepped:Connect(function()
                     if not Library.Toggled or not MainFrame.Visible then
                         glassPart.Transparency = 1
-                        dof.Enabled = false
                         return
                     end
-                    dof.Enabled = true
-                    glassPart.Transparency = 0.98
-                    
+                    glassPart.Transparency = 0.92
+
                     local cam = workspace.CurrentCamera
                     local depth = 0.11
                     local pos = MainFrame.AbsolutePosition
                     local sz = MainFrame.AbsoluteSize
-                    
+
                     local tl = cam:ViewportPointToRay(pos.X, pos.Y, depth).Origin
                     local br = cam:ViewportPointToRay(pos.X + sz.X, pos.Y + sz.Y, depth).Origin
                     local center = cam:ViewportPointToRay(pos.X + sz.X/2, pos.Y + sz.Y/2, depth).Origin
-                    
+
                     glassPart.CFrame = CFrame.new(center, center + cam.CFrame.LookVector)
                     glassPart.Size = Vector3.new(math.abs(br.X - tl.X), math.abs(tl.Y - br.Y), 0.001)
                 end)
             end
         else
-            if dof then dof.Enabled = false end
             if glassPart then glassPart.Transparency = 1 end
             if blurConnection then
                 blurConnection:Disconnect()
