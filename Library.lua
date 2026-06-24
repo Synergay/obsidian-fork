@@ -3601,7 +3601,7 @@ do
         local function CreateButton(Button)
             local Base = New("TextButton", {
                 Active = not Button.Disabled,
-                BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor",
+                BackgroundTransparency = 1,
                 Size = UDim2.fromScale(1, 1),
                 Text = Button.Text,
                 TextSize = 14,
@@ -3624,9 +3624,24 @@ do
                 })
             )
 
-            local grad = New("UIGradient", { Parent = Base })
+            local GradBg = New("Frame", {
+                BackgroundColor3 = "WhiteColor",
+                Size = UDim2.fromScale(1, 1),
+                ZIndex = Base.ZIndex - 1,
+                Parent = Base,
+            })
+            table.insert(
+                Library.Corners,
+                New("UICorner", {
+                    CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+                    Parent = GradBg,
+                })
+            )
+
+            local grad = New("UIGradient", { Parent = GradBg })
             Library:RegisterGradient(grad)
             Button.Gradient = grad
+            Button.GradBg = GradBg
 
             return Base, Stroke
         end
@@ -3721,13 +3736,13 @@ do
                 if SubButton.Gradient then
                     SubButton.Gradient.Enabled = not SubButton.Disabled
                 end
-                SubButton.Base.BackgroundColor3 = SubButton.Disabled and Library.Scheme.BackgroundColor
-                    or Color3.new(1, 1, 1)
+                if SubButton.GradBg then
+                    SubButton.GradBg.BackgroundColor3 = SubButton.Disabled and Library.Scheme.BackgroundColor or Color3.new(1, 1, 1)
+                    SubButton.GradBg.BackgroundTransparency = SubButton.Disabled and 0 or 0
+                    Library.Registry[SubButton.GradBg].BackgroundColor3 = SubButton.Disabled and "BackgroundColor" or "WhiteColor"
+                end
                 SubButton.Base.TextTransparency = SubButton.Disabled and 0.8 or 0.4
                 SubButton.Stroke.Transparency = SubButton.Disabled and 0.5 or 0
-
-                Library.Registry[SubButton.Base].BackgroundColor3 = SubButton.Disabled and "BackgroundColor"
-                    or "WhiteColor"
             end
 
             function SubButton:SetDisabled(Disabled: boolean)
@@ -3785,12 +3800,13 @@ do
             if Button.Gradient then
                 Button.Gradient.Enabled = not Button.Disabled
             end
-            Button.Base.BackgroundColor3 = Button.Disabled and Library.Scheme.BackgroundColor
-                or Color3.new(1, 1, 1)
+            if Button.GradBg then
+                Button.GradBg.BackgroundColor3 = Button.Disabled and Library.Scheme.BackgroundColor or Color3.new(1, 1, 1)
+                Button.GradBg.BackgroundTransparency = Button.Disabled and 0 or 0
+                Library.Registry[Button.GradBg].BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor"
+            end
             Button.Base.TextTransparency = Button.Disabled and 0.8 or 0.4
             Button.Stroke.Transparency = Button.Disabled and 0.5 or 0
-
-            Library.Registry[Button.Base].BackgroundColor3 = Button.Disabled and "BackgroundColor" or "WhiteColor"
         end
 
         function Button:SetDisabled(Disabled: boolean)
