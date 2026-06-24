@@ -2541,6 +2541,13 @@ do
             end
 
             if KeybindsToggle.Loaded then
+                -- only list keys that are actually bound; hide the row while unbound
+                local Bound = KeyPicker.Value ~= "None" and KeyPicker.Value ~= "Unknown"
+                if not Bound then
+                    KeybindsToggle:SetVisibility(false)
+                    return
+                end
+
                 if ShowToggle then
                     KeybindsToggle:SetNormal(false)
                 else
