@@ -98,22 +98,26 @@ return function(Library, Window)
     end
 
     -- ── Hit-register marker styling ────────────────────────────────────────────
-    -- Tag each keyframe marker so hit/damage frames stand out in the readout.
-    local function markerTag(name)
-        local n = name:lower()
-        if n:find("hit") or n:find("dmg") or n:find("damage") or n:find("deal") then
+    -- This game stores timing in the marker VALUE, not the name:
+    --   Name="Function" Value="Hitbox" / "Hit" / "Launch" / "Startup" / ...
+    -- so tag against name+value combined.
+    local function markerTag(name, value)
+        local n = ((name or "") .. " " .. tostring(value or "")):lower()
+        if n:find("hitbox") or n:find("hit") or n:find("blackflash") or n:find("dmg") or n:find("damage") then
             return "[HIT] "
         elseif n:find("iframe") or n:find("invincib") then
             return "[IFRAME] "
-        elseif n:find("stun") or n:find("cancel") then
+        elseif n:find("stun") or n:find("cancel") or n:find("slow") then
             return "[STUN] "
-        elseif n:find("start") or n:find("begin") or n:find("active") then
+        elseif n:find("start") or n:find("begin") or n:find("active") or n:find("create") then
             return "[START] "
         elseif n:find("end") or n:find("finish") or n:find("stop") then
             return "[END] "
-        elseif n:find("grab") or n:find("launch") or n:find("knockback") then
+        elseif n:find("grab") or n:find("launch") or n:find("throw") or n:find("drag")
+            or n:find("knockback") or n:find("slam") or n:find("pull") then
             return "[GRAB] "
-        elseif n:find("vfx") or n:find("sfx") or n:find("effect") or n:find("sound") or n:find("particle") then
+        elseif n:find("vfx") or n:find("sfx") or n:find("effect") or n:find("sound")
+            or n:find("particle") or n:find("point") then
             return "[FX] "
         end
         return ""
@@ -151,9 +155,9 @@ return function(Library, Window)
 
     Left:AddDivider()
 
-    Left:AddLabel("AVId",     { Text = "ID: —",       DoesWrap = true })
-    Left:AddLabel("AVDur",    { Text = "Duration: —", DoesWrap = false })
-    Left:AddLabel("AVLooped", { Text = "Looped: —",   DoesWrap = false })
+    local lblId     = Left:AddLabel({ Text = "ID: —",       DoesWrap = true })
+    local lblDur    = Left:AddLabel({ Text = "Duration: —", DoesWrap = false })
+    local lblLooped = Left:AddLabel({ Text = "Looped: —",   DoesWrap = false })
 
     Left:AddButton({
         Text = "Copy Animation ID",
@@ -193,7 +197,7 @@ return function(Library, Window)
     Right:AddDivider()
 
     local HitBox = Tab:AddRightGroupbox("Hit Register", "crosshair")
-    HitBox:AddLabel("AVHits", {
+    local lblHits = HitBox:AddLabel({
         Text = "Select an animation to analyse its keyframe markers.",
         DoesWrap = true,
     })
@@ -277,7 +281,7 @@ return function(Library, Window)
         ticksFolder:ClearAllChildren()
         if currentDur <= 0 then return end
         for _, m in ipairs(currentMarkers) do
-            if markerTag(m.n) == "[HIT] " then
+            if markerTag(m.n, m.v) == "[HIT] " then
                 local t = Instance.new("Frame")
                 t.Size             = UDim2.new(0, 2, 1, 0)
                 t.Position         = UDim2.new(math.clamp(m.t / currentDur, 0, 1), -1, 0, 0)
@@ -341,11 +345,11 @@ return function(Library, Window)
 
     -- ── Hit-register loading ────────────────────────────────────────────────────
     local function loadHitData(animId)
-        Options.AVHits:SetText("Loading keyframe data…")
+        lblHits:SetText("Loading keyframe data…")
         task.spawn(function()
             local ok, seq = pcall(function() return KFP:GetKeyframeSequenceAsync(animId) end)
             if not ok or not seq then
-                Options.AVHits:SetText("Failed to load keyframe data.")
+                lblHits:SetText("Failed to load keyframe data.")
                 return
             end
 
@@ -368,25 +372,25 @@ return function(Library, Window)
             currentDur, currentMarkers = dur, markers
             rebuildTicks()
 
-            Options.AVDur:SetText(string.format("Duration: %.3f s", dur))
-            Options.AVLooped:SetText("Looped: " .. (seq.Loop and "Yes" or "No"))
+            lblDur:SetText(string.format("Duration: %.3f s", dur))
+            lblLooped:SetText("Looped: " .. (seq.Loop and "Yes" or "No"))
 
             if #markers == 0 then
-                Options.AVHits:SetText(string.format(
+                lblHits:SetText(string.format(
                     "No markers found.\n(%d keyframes, %.3fs)", #kfs, dur))
             else
                 local hitCount = 0
                 local lines = {}
                 for _, m in ipairs(markers) do
-                    local tag = markerTag(m.n)
+                    local tag = markerTag(m.n, m.v)
                     if tag == "[HIT] " then hitCount += 1 end
-                    local suffix = m.v ~= "" and ("  = " .. tostring(m.v)) or ""
-                    table.insert(lines, string.format("%.3fs  %s%s%s",
-                        m.t, tag, m.n, suffix))
+                    -- show the value (e.g. "Hitbox") since that's the meaningful token here
+                    local label = m.v ~= "" and tostring(m.v) or m.n
+                    table.insert(lines, string.format("%.3fs  %s%s", m.t, tag, label))
                 end
                 local header = string.format("%d marker(s)%s\n\n", #markers,
                     hitCount > 0 and ("  ·  " .. hitCount .. " HIT") or "")
-                Options.AVHits:SetText(header .. table.concat(lines, "\n"))
+                lblHits:SetText(header .. table.concat(lines, "\n"))
             end
 
             pcall(function() seq:Destroy() end)
@@ -400,10 +404,10 @@ return function(Library, Window)
         previewStop()
         rebuildTicks()
         fill.Size = UDim2.new(0, 0, 1, 0)
-        Options.AVId:SetText("ID: —")
-        Options.AVDur:SetText("Duration: —")
-        Options.AVLooped:SetText("Looped: —")
-        Options.AVHits:SetText("Select an animation to analyse its keyframe markers.")
+        lblId:SetText("ID: —")
+        lblDur:SetText("Duration: —")
+        lblLooped:SetText("Looped: —")
+        lblHits:SetText("Select an animation to analyse its keyframe markers.")
     end
 
     Options.AVChar:OnChanged(function(char)
@@ -430,9 +434,9 @@ return function(Library, Window)
             and AnimTree[char][folder][animName]
         if not id then return end
         currentAnimId = id
-        Options.AVId:SetText("ID: " .. id)
-        Options.AVDur:SetText("Duration: …")
-        Options.AVLooped:SetText("Looped: …")
+        lblId:SetText("ID: " .. id)
+        lblDur:SetText("Duration: …")
+        lblLooped:SetText("Looped: …")
         loadHitData(id)
     end)
 
