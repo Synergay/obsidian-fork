@@ -7,11 +7,13 @@
 --   AnimViewer(Library, Window)
 
 return function(Library, Window)
-    local Players = game:GetService("Players")
-    local KFP     = game:GetService("KeyframeSequenceProvider")
-    local LP      = Players.LocalPlayer
-    local Options = Library.Options
-    local Toggles = Library.Toggles
+    local Players   = game:GetService("Players")
+    local KFP       = game:GetService("KeyframeSequenceProvider")
+    local RunService= game:GetService("RunService")
+    local LP        = Players.LocalPlayer
+    local Options   = Library.Options
+    local Toggles   = Library.Toggles
+    local Scheme    = Library.Scheme
 
     -- ── Build animation tree ──────────────────────────────────────────────────
     -- AnimTree[char][folder][animName] = animationId
@@ -58,6 +60,7 @@ return function(Library, Window)
 
     -- ── State ─────────────────────────────────────────────────────────────────
     local currentAnimId, currentTrack
+    local currentDur, currentMarkers = 0, {}  -- filled by loadHitData, used by preview ticks
 
     local function getAnimator()
         local char = LP.Character
@@ -195,6 +198,147 @@ return function(Library, Window)
         DoesWrap = true,
     })
 
+    -- ── 3D Preview ───────────────────────────────────────────────────────────────
+    -- ViewportFrame showing a clone of your character performing the animation, with
+    -- a scrub bar (green ticks = HIT markers) at the bottom.
+    local PreviewBox = Tab:AddRightGroupbox("Preview", "eye")
+
+    local vp = Instance.new("ViewportFrame")
+    vp.Size            = UDim2.new(1, 0, 0, 200)
+    vp.BackgroundColor3 = Scheme.BackgroundColor
+    vp.BorderSizePixel = 0
+    vp.Ambient         = Color3.fromRGB(160, 160, 160)
+    vp.LightColor      = Color3.fromRGB(255, 255, 255)
+    vp.Parent          = PreviewBox.Container
+    Instance.new("UICorner", vp).CornerRadius = UDim.new(0, 4)
+    local vpStroke = Instance.new("UIStroke", vp)
+    vpStroke.Color = Scheme.OutlineColor
+
+    local world = Instance.new("WorldModel")
+    world.Parent = vp
+    local cam = Instance.new("Camera")
+    cam.Parent = vp
+    vp.CurrentCamera = cam
+
+    -- Scrub bar
+    local bar = Instance.new("Frame")
+    bar.Size             = UDim2.new(1, 0, 0, 12)
+    bar.BackgroundColor3 = Scheme.MainColor
+    bar.BorderSizePixel  = 0
+    bar.Parent           = PreviewBox.Container
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 2)
+    Instance.new("UIStroke", bar).Color = Scheme.OutlineColor
+
+    local fill = Instance.new("Frame")
+    fill.Size             = UDim2.new(0, 0, 1, 0)
+    fill.BackgroundColor3 = Scheme.AccentColor
+    fill.BorderSizePixel  = 0
+    fill.Parent           = bar
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
+
+    local ticksFolder = Instance.new("Folder")
+    ticksFolder.Name   = "Ticks"
+    ticksFolder.Parent = bar
+
+    local previewChar, previewAnimator, previewTrack
+
+    local function buildPreviewChar()
+        if previewChar then previewChar:Destroy(); previewChar = nil end
+        previewAnimator, previewTrack = nil, nil
+        local src = LP.Character
+        if not src then return end
+        local ok, clone = pcall(function() return src:Clone() end)
+        if not ok or not clone then return end
+        -- strip scripts so nothing runs inside the viewport
+        for _, d in ipairs(clone:GetDescendants()) do
+            if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+                d:Destroy()
+            end
+        end
+        local hum = clone:FindFirstChildOfClass("Humanoid")
+        local hrp = clone:FindFirstChild("HumanoidRootPart")
+        if hum then
+            hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+            hum.PlatformStand = true
+            previewAnimator = hum:FindFirstChildOfClass("Animator")
+                or Instance.new("Animator", hum)
+        end
+        if hrp then hrp.Anchored = true end
+        clone.Parent = world
+        previewChar = clone
+        -- frame the camera on the model
+        local cf, size = clone:GetBoundingBox()
+        local dist = math.max(size.X, size.Y, size.Z) * 2
+        local look = hrp and hrp.CFrame.LookVector or Vector3.new(0, 0, -1)
+        cam.CFrame = CFrame.new(cf.Position + look * dist + Vector3.new(0, size.Y * 0.15, 0), cf.Position)
+    end
+
+    local function rebuildTicks()
+        ticksFolder:ClearAllChildren()
+        if currentDur <= 0 then return end
+        for _, m in ipairs(currentMarkers) do
+            if markerTag(m.n) == "[HIT] " then
+                local t = Instance.new("Frame")
+                t.Size             = UDim2.new(0, 2, 1, 0)
+                t.Position         = UDim2.new(math.clamp(m.t / currentDur, 0, 1), -1, 0, 0)
+                t.BackgroundColor3 = Color3.fromRGB(60, 255, 90)
+                t.BorderSizePixel  = 0
+                t.ZIndex           = 3
+                t.Parent           = ticksFolder
+            end
+        end
+    end
+
+    local function previewStop()
+        if previewTrack then pcall(function() previewTrack:Stop(0) end); previewTrack = nil end
+    end
+
+    local function previewPlay()
+        if not currentAnimId then return Library:Notify("Select an animation first.", 3) end
+        buildPreviewChar()
+        if not previewAnimator then return Library:Notify("No character to preview.", 3) end
+        previewStop()
+        local ao = Instance.new("Animation")
+        ao.AnimationId = currentAnimId
+        local ok, tr = pcall(function() return previewAnimator:LoadAnimation(ao) end)
+        ao:Destroy()
+        if not ok or not tr then return Library:Notify("Failed to load preview.", 3) end
+        tr.Looped = Toggles.AVLoop and Toggles.AVLoop.Value or false
+        tr:AdjustSpeed(Options.AVSpeed and Options.AVSpeed.Value or 1)
+        tr:Play()
+        previewTrack = tr
+    end
+
+    PreviewBox:AddButton({ Text = "▶ Preview", Func = previewPlay })
+        :AddButton({ Text = "■ Stop", Func = previewStop })
+
+    -- drive the fill bar from the preview track each frame
+    RunService.RenderStepped:Connect(function()
+        if previewTrack and previewTrack.Length > 0 then
+            fill.Size = UDim2.new(math.clamp(previewTrack.TimePosition / previewTrack.Length, 0, 1), 0, 1, 0)
+        end
+    end)
+
+    -- click/drag the bar to scrub
+    local dragging = false
+    local function scrubTo(x)
+        if not previewTrack or previewTrack.Length <= 0 then return end
+        local rel = math.clamp((x - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+        previewTrack.TimePosition = rel * previewTrack.Length
+    end
+    bar.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            scrubTo(i.Position.X)
+        end
+    end)
+    bar.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    RunService.RenderStepped:Connect(function()
+        if dragging then scrubTo(Players.LocalPlayer:GetMouse().X) end
+    end)
+
     -- ── Hit-register loading ────────────────────────────────────────────────────
     local function loadHitData(animId)
         Options.AVHits:SetText("Loading keyframe data…")
@@ -220,6 +364,9 @@ return function(Library, Window)
                     end
                 end
             end
+
+            currentDur, currentMarkers = dur, markers
+            rebuildTicks()
 
             Options.AVDur:SetText(string.format("Duration: %.3f s", dur))
             Options.AVLooped:SetText("Looped: " .. (seq.Loop and "Yes" or "No"))
@@ -249,6 +396,10 @@ return function(Library, Window)
     -- ── Dependent dropdown chain ────────────────────────────────────────────────
     local function resetInfo()
         currentAnimId = nil
+        currentDur, currentMarkers = 0, {}
+        previewStop()
+        rebuildTicks()
+        fill.Size = UDim2.new(0, 0, 1, 0)
         Options.AVId:SetText("ID: —")
         Options.AVDur:SetText("Duration: —")
         Options.AVLooped:SetText("Looped: —")
@@ -285,7 +436,11 @@ return function(Library, Window)
         loadHitData(id)
     end)
 
-    Library:OnUnload(stopAnim)
+    Library:OnUnload(function()
+        stopAnim()
+        previewStop()
+        if previewChar then previewChar:Destroy() end
+    end)
 
     return { Tab = Tab, AnimTree = AnimTree }
 end
