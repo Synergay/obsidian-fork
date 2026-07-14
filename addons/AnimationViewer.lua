@@ -64,21 +64,24 @@ local KNOWN_STATE_MARKERS = {
 
 -- ── Theme ─────────────────────────────────────────────────────────────────────
 
+-- Matches Library.Scheme (Obsidian/Linoria): Code font, purple accent, square-ish
 local C = {
-    BG      = Color3.fromRGB(16, 16, 24),
-    SURF    = Color3.fromRGB(24, 24, 36),
-    SURF2   = Color3.fromRGB(32, 32, 48),
-    BORDER  = Color3.fromRGB(52, 52, 76),
-    ACCENT  = Color3.fromRGB(108, 156, 255),
-    ACCDIM  = Color3.fromRGB(48, 76, 168),
-    TEXT    = Color3.fromRGB(220, 220, 235),
-    DIM     = Color3.fromRGB(128, 128, 152),
-    RED     = Color3.fromRGB(255, 80, 80),
+    BG      = Color3.fromRGB(15, 15, 15),   -- BackgroundColor
+    SURF    = Color3.fromRGB(25, 25, 25),   -- MainColor
+    SURF2   = Color3.fromRGB(35, 35, 35),   -- MainColor, lifted
+    BORDER  = Color3.fromRGB(40, 40, 40),   -- OutlineColor
+    ACCENT  = Color3.fromRGB(125, 85, 255), -- AccentColor
+    ACCDIM  = Color3.fromRGB(70, 48, 150),  -- dim accent
+    TEXT    = Color3.fromRGB(255, 255, 255), -- FontColor
+    DIM     = Color3.fromRGB(140, 140, 140),
+    RED     = Color3.fromRGB(255, 50, 50),  -- RedColor
     GREEN   = Color3.fromRGB(72, 210, 110),
     YELLOW  = Color3.fromRGB(255, 205, 70),
     ORANGE  = Color3.fromRGB(255, 150, 50),
     PURPLE  = Color3.fromRGB(180, 120, 255),
 }
+local FONT     = Enum.Font.Code
+local FONT_B   = Enum.Font.Code  -- library uses a single monospace weight
 
 local PW  = 285   -- panel width
 local PH  = 508   -- panel height
@@ -114,15 +117,15 @@ Container.Parent = Gui
 -- Tab handle
 local Tab = Instance.new("TextButton")
 Tab.Size = UDim2.new(0, TW, 1, 0)
-Tab.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+Tab.BackgroundColor3 = C.SURF
 Tab.BorderSizePixel = 0
 Tab.Text = "◁"
 Tab.TextColor3 = C.ACCENT
 Tab.TextSize = 11
-Tab.Font = Enum.Font.GothamBold
+Tab.Font = FONT_B
 Tab.ZIndex = 52
 Tab.Parent = Container
-Instance.new("UICorner", Tab).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", Tab).CornerRadius = UDim.new(0, 4)
 Instance.new("UIStroke", Tab).Color = C.BORDER
 
 local TabStripe = Instance.new("Frame")
@@ -142,7 +145,7 @@ Panel.BorderSizePixel = 0
 Panel.ZIndex = 51
 Panel.ClipsDescendants = true
 Panel.Parent = Container
-Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 4)
 local PanelStroke = Instance.new("UIStroke", Panel)
 PanelStroke.Color = C.BORDER
 
@@ -153,7 +156,7 @@ Hdr.BackgroundColor3 = C.SURF
 Hdr.BorderSizePixel = 0
 Hdr.ZIndex = 52
 Hdr.Parent = Panel
-Instance.new("UICorner", Hdr).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", Hdr).CornerRadius = UDim.new(0, 4)
 
 -- Fix lower corners of header (UICorner applies to all corners)
 local HdrFix = Instance.new("Frame")
@@ -171,7 +174,7 @@ HdrIcon.BackgroundTransparency = 1
 HdrIcon.Text = "⬡"
 HdrIcon.TextColor3 = C.ACCENT
 HdrIcon.TextSize = 14
-HdrIcon.Font = Enum.Font.GothamBold
+HdrIcon.Font = FONT_B
 HdrIcon.ZIndex = 53
 HdrIcon.Parent = Hdr
 
@@ -182,7 +185,7 @@ HdrTitle.BackgroundTransparency = 1
 HdrTitle.Text = "Animation Viewer"
 HdrTitle.TextColor3 = C.TEXT
 HdrTitle.TextSize = 13
-HdrTitle.Font = Enum.Font.GothamBold
+HdrTitle.Font = FONT_B
 HdrTitle.TextXAlignment = Enum.TextXAlignment.Left
 HdrTitle.ZIndex = 53
 HdrTitle.Parent = Hdr
@@ -195,7 +198,7 @@ HdrStatus.BackgroundTransparency = 1
 HdrStatus.Text = ""
 HdrStatus.TextColor3 = C.GREEN
 HdrStatus.TextSize = 9
-HdrStatus.Font = Enum.Font.GothamMedium
+HdrStatus.Font = FONT
 HdrStatus.TextXAlignment = Enum.TextXAlignment.Right
 HdrStatus.TextTruncate = Enum.TextTruncate.AtEnd
 HdrStatus.ZIndex = 53
@@ -227,7 +230,7 @@ SPad.PaddingBottom = UDim.new(0, 10)
 -- ── UI Helpers ────────────────────────────────────────────────────────────────
 
 local function applyCorner(inst, r)
-    Instance.new("UICorner", inst).CornerRadius = UDim.new(0, r or 6)
+    Instance.new("UICorner", inst).CornerRadius = UDim.new(0, r or 4)
 end
 
 local function makeSectionLabel(text, order)
@@ -241,7 +244,7 @@ local function makeSectionLabel(text, order)
     l.Text = text:upper()
     l.TextColor3 = C.DIM
     l.TextSize = 10
-    l.Font = Enum.Font.GothamBold
+    l.Font = FONT_B
     l.TextXAlignment = Enum.TextXAlignment.Left
     l.ZIndex = 53
 end
@@ -289,7 +292,7 @@ local function makeDropdown(placeholder, order)
     bLabel.Text = placeholder
     bLabel.TextColor3 = C.DIM
     bLabel.TextSize = 12
-    bLabel.Font = Enum.Font.Gotham
+    bLabel.Font = FONT
     bLabel.TextXAlignment = Enum.TextXAlignment.Left
     bLabel.TextTruncate = Enum.TextTruncate.AtEnd
     bLabel.ZIndex = 56
@@ -301,7 +304,7 @@ local function makeDropdown(placeholder, order)
     bArrow.Text = "▾"
     bArrow.TextColor3 = C.DIM
     bArrow.TextSize = 11
-    bArrow.Font = Enum.Font.GothamBold
+    bArrow.Font = FONT_B
     bArrow.ZIndex = 56
 
     -- Search box (inside float, only visible when open)
@@ -346,7 +349,7 @@ local function makeDropdown(placeholder, order)
             item.Text = v
             item.TextColor3 = (v == value) and C.ACCENT or C.TEXT
             item.TextSize = 11
-            item.Font = v == value and Enum.Font.GothamMedium or Enum.Font.Gotham
+            item.Font = v == value and FONT or FONT
             item.TextXAlignment = Enum.TextXAlignment.Left
             item.LayoutOrder = i
             item.ZIndex = 302
@@ -412,7 +415,7 @@ local function makeDropdown(placeholder, order)
             sBox.Text = ""
             sBox.TextColor3 = C.TEXT
             sBox.TextSize = 11
-            sBox.Font = Enum.Font.Gotham
+            sBox.Font = FONT
             sBox.ClearTextOnFocus = false
             sBox.ZIndex = 304
             applyCorner(sBox, 4)
@@ -497,7 +500,7 @@ local function makeInfoRow(label, order)
     lbl.Text = label
     lbl.TextColor3 = C.DIM
     lbl.TextSize = 11
-    lbl.Font = Enum.Font.Gotham
+    lbl.Font = FONT
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.ZIndex = 53
 
@@ -508,7 +511,7 @@ local function makeInfoRow(label, order)
     val.Text = "—"
     val.TextColor3 = C.TEXT
     val.TextSize = 11
-    val.Font = Enum.Font.GothamMedium
+    val.Font = FONT
     val.TextXAlignment = Enum.TextXAlignment.Left
     val.TextTruncate = Enum.TextTruncate.AtEnd
     val.ZIndex = 53
@@ -550,7 +553,7 @@ do
     copyBtn.Text = "  Copy Animation ID"
     copyBtn.TextColor3 = C.DIM
     copyBtn.TextSize = 11
-    copyBtn.Font = Enum.Font.Gotham
+    copyBtn.Font = FONT
     copyBtn.ZIndex = 53
     applyCorner(copyBtn)
 end
@@ -573,7 +576,7 @@ do
     speedLabel.Text = "Speed: 1.0×"
     speedLabel.TextColor3 = C.DIM
     speedLabel.TextSize = 11
-    speedLabel.Font = Enum.Font.Gotham
+    speedLabel.Font = FONT
     speedLabel.TextXAlignment = Enum.TextXAlignment.Left
     speedLabel.ZIndex = 53
 
@@ -618,7 +621,7 @@ do
     lbl.Text = "Loop"
     lbl.TextColor3 = C.TEXT
     lbl.TextSize = 12
-    lbl.Font = Enum.Font.Gotham
+    lbl.Font = FONT
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.ZIndex = 53
 
@@ -658,7 +661,7 @@ do
     playBtn.Text = "▶  Play"
     playBtn.TextColor3 = Color3.fromRGB(8, 18, 12)
     playBtn.TextSize = 12
-    playBtn.Font = Enum.Font.GothamBold
+    playBtn.Font = FONT_B
     playBtn.ZIndex = 53
     applyCorner(playBtn)
 
@@ -669,7 +672,7 @@ do
     stopBtn.Text = "■  Stop"
     stopBtn.TextColor3 = Color3.new(1, 1, 1)
     stopBtn.TextSize = 12
-    stopBtn.Font = Enum.Font.GothamBold
+    stopBtn.Font = FONT_B
     stopBtn.ZIndex = 53
     applyCorner(stopBtn)
 end
@@ -703,7 +706,7 @@ HitStatus.BackgroundTransparency = 1
 HitStatus.Text = "Select an animation to analyse"
 HitStatus.TextColor3 = C.DIM
 HitStatus.TextSize = 11
-HitStatus.Font = Enum.Font.Gotham
+HitStatus.Font = FONT
 HitStatus.TextXAlignment = Enum.TextXAlignment.Left
 HitStatus.ZIndex = 53
 HitStatus.LayoutOrder = 1
@@ -852,14 +855,14 @@ local function addMarkerRow(time, name, value, order)
         l.Text = txt
         l.TextColor3 = col
         l.TextSize = 10
-        l.Font = fnt or Enum.Font.Gotham
+        l.Font = fnt or FONT
         l.TextXAlignment = xalign or Enum.TextXAlignment.Left
         l.ZIndex = 54
         return l
     end
 
     -- icon column
-    local iconLbl = cell(icon, color, 14, Enum.TextXAlignment.Center, Enum.Font.GothamBold)
+    local iconLbl = cell(icon, color, 14, Enum.TextXAlignment.Center, FONT_B)
     iconLbl.Position = UDim2.new(0, 0, 0, 0)
 
     -- time column
@@ -868,7 +871,7 @@ local function addMarkerRow(time, name, value, order)
 
     -- name column
     local displayName = name .. (value ~= "" and ("  " .. value) or "")
-    local nameLbl = cell(displayName, color, 160, Enum.TextXAlignment.Left, bold and Enum.Font.GothamBold or Enum.Font.Gotham)
+    local nameLbl = cell(displayName, color, 160, Enum.TextXAlignment.Left, bold and FONT_B or FONT)
     nameLbl.Position = UDim2.new(0, 56, 0, 0)
     nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
 

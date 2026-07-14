@@ -773,3 +773,6 @@ ThemeManager:ApplyToTab(Tabs["UI Settings"])
 -- You can use the SaveManager:LoadAutoloadConfig() to load a config
 -- which has been marked to be one that auto loads!
 SaveManager:LoadAutoloadConfig()
+
+-- Addons: AnimationViewer (slide-out panel, right edge)
+loadstring(game:HttpGet(repo .. "addons/AnimationViewer.lua"))()
