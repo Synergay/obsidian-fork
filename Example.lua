@@ -774,5 +774,5 @@ ThemeManager:ApplyToTab(Tabs["UI Settings"])
 -- which has been marked to be one that auto loads!
 SaveManager:LoadAutoloadConfig()
 
--- Addons: AnimationViewer (slide-out panel, right edge)
-loadstring(game:HttpGet(repo .. "addons/AnimationViewer.lua"))()
+-- Addon: AnimationViewer — adds an "Animations" tab built with the library itself
+loadstring(game:HttpGet(repo .. "addons/AnimationViewer.lua"))()(Library, Window)
