@@ -103,7 +103,11 @@ return function(Library, Window)
     -- so tag against name+value combined.
     local function markerTag(name, value)
         local n = ((name or "") .. " " .. tostring(value or "")):lower()
-        if n:find("hitbox") or n:find("hit") or n:find("blackflash") or n:find("dmg") or n:find("damage") then
+        -- grab/throw family is unblockable — check FIRST so "HitboxDrag" etc. don't tag as [HIT]
+        if n:find("grab") or n:find("launch") or n:find("throw") or n:find("drag")
+            or n:find("knockback") or n:find("slam") or n:find("pull") then
+            return "[GRAB] "
+        elseif n:find("hitbox") or n:find("hit") or n:find("blackflash") or n:find("dmg") or n:find("damage") then
             return "[HIT] "
         elseif n:find("iframe") or n:find("invincib") then
             return "[IFRAME] "
@@ -113,9 +117,6 @@ return function(Library, Window)
             return "[START] "
         elseif n:find("end") or n:find("finish") or n:find("stop") then
             return "[END] "
-        elseif n:find("grab") or n:find("launch") or n:find("throw") or n:find("drag")
-            or n:find("knockback") or n:find("slam") or n:find("pull") then
-            return "[GRAB] "
         elseif n:find("vfx") or n:find("sfx") or n:find("effect") or n:find("sound")
             or n:find("particle") or n:find("point") then
             return "[FX] "
@@ -281,11 +282,18 @@ return function(Library, Window)
         ticksFolder:ClearAllChildren()
         if currentDur <= 0 then return end
         for _, m in ipairs(currentMarkers) do
-            if markerTag(m.n, m.v) == "[HIT] " then
+            local tag = markerTag(m.n, m.v)
+            local color
+            if tag == "[HIT] " then
+                color = Color3.fromRGB(60, 255, 90)    -- green: blockable
+            elseif tag == "[GRAB] " then
+                color = Color3.fromRGB(255, 140, 0)    -- orange: unblockable
+            end
+            if color then
                 local t = Instance.new("Frame")
                 t.Size             = UDim2.new(0, 2, 1, 0)
                 t.Position         = UDim2.new(math.clamp(m.t / currentDur, 0, 1), -1, 0, 0)
-                t.BackgroundColor3 = Color3.fromRGB(60, 255, 90)
+                t.BackgroundColor3 = color
                 t.BorderSizePixel  = 0
                 t.ZIndex           = 3
                 t.Parent           = ticksFolder
