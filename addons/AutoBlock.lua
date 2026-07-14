@@ -17,6 +17,14 @@ local RE          = RS:WaitForChild("Knit").Knit.Services.BlockService.RE
 local Activated   = RE.Activated
 local Deactivated = RE.Deactivated
 
+-- Known-unblockable move IDs (server-side flag, can't be read from data — hand-maintained).
+-- Falls back to "nothing is unblockable" if the fetch fails, so a hiccup won't break blocking.
+local repo = "https://raw.githubusercontent.com/Synergay/obsidian-fork/main/"
+local isUnblockable = select(2, pcall(function()
+    return loadstring(game:HttpGet(repo .. "addons/Unblockable.lua"))()
+end))
+if type(isUnblockable) ~= "function" then isUnblockable = function() return false end end
+
 local LEAD = 0.1  -- block this long before the hit
 local HOLD = 0.1  -- keep block up this long after activating
 -- ponytail: block window is [hit-LEAD, hit-LEAD+HOLD]. Raise HOLD if it drops before
@@ -79,6 +87,7 @@ local function watch(char)
     animator.AnimationPlayed:Connect(function(track)
         local id = track.Animation and track.Animation.AnimationId
         if not id or id == "" then return end
+        if isUnblockable(id) then return end   -- don't waste a block on a move that ignores it
         task.spawn(function()
             local times = getHitTimes(id)
             if #times == 0 then return end

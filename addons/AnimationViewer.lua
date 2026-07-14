@@ -15,6 +15,13 @@ return function(Library, Window)
     local Toggles   = Library.Toggles
     local Scheme    = Library.Scheme
 
+    -- Known-unblockable move IDs (server-side flag, not in the data). Shared with AutoBlock.
+    local repo = "https://raw.githubusercontent.com/Synergay/obsidian-fork/main/"
+    local isUnblockable = select(2, pcall(function()
+        return loadstring(game:HttpGet(repo .. "addons/Unblockable.lua"))()
+    end))
+    if type(isUnblockable) ~= "function" then isUnblockable = function() return false end end
+
     -- ── Build animation tree ──────────────────────────────────────────────────
     -- AnimTree[char][folder][animName] = animationId
     local AnimRoot = game:GetService("ReplicatedStorage"):FindFirstChild("Animations")
@@ -281,13 +288,15 @@ return function(Library, Window)
     local function rebuildTicks()
         ticksFolder:ClearAllChildren()
         if currentDur <= 0 then return end
+        local moveUnblockable = isUnblockable(currentAnimId)
         for _, m in ipairs(currentMarkers) do
             local tag = markerTag(m.n, m.v)
             local color
             if tag == "[HIT] " then
-                color = Color3.fromRGB(60, 255, 90)    -- green: blockable
+                -- green if blockable, orange if the whole move ignores block (e.g. Rush)
+                color = moveUnblockable and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(60, 255, 90)
             elseif tag == "[GRAB] " then
-                color = Color3.fromRGB(255, 140, 0)    -- orange: unblockable
+                color = Color3.fromRGB(255, 140, 0)    -- orange: unblockable grab/throw
             end
             if color then
                 local t = Instance.new("Frame")
